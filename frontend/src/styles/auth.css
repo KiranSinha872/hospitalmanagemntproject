@@ -45,6 +45,7 @@ body {
     font-weight: 600;
     font-size: 1rem;
     letter-spacing: 0.01em;
+    white-space: nowrap;
 }
 .site-header__brand:hover {
     text-decoration: underline;
@@ -61,6 +62,9 @@ body {
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 500;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
 }
 .site-header__link:hover {
     color: #fff;
@@ -71,6 +75,7 @@ body {
     font-size: 0.9rem;
     color: rgba(255 255 255 / 0.75);
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .site-header__logout {
@@ -84,6 +89,10 @@ body {
     font-family: "IBM Plex Sans", system-ui, sans-serif;
     font-weight: 500;
     transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 .site-header__logout:hover {
     background: rgba(255 255 255 / 0.08);
@@ -223,6 +232,10 @@ body {
     border: none;
     border-radius: var(--radius);
     padding: 0.65rem 1.25rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     width: 100%;
     text-align: center;
@@ -270,21 +283,34 @@ body {
 
 /* ─── Responsive: single column below 800px ─────────────────────────────────── */
 @media (max-width: 800px) {
+    main:has(.auth-page) {
+        margin: 0 auto;
+        padding: 0;
+    }
+
     .auth-page {
         grid-template-columns: 1fr;
         gap: 0;
+        min-height: auto;
+        padding: 0;
     }
 
     /* Form comes first on mobile */
     .auth-panel--form {
         order: -1;
-        padding: 2.5rem 0 1.5rem;
-        border-bottom: 1px solid var(--line);
+        justify-content: flex-start;
+        padding: 1.5rem 1rem;
+        min-height: auto;
+        border-bottom: none;
     }
 
     .auth-panel--info {
         border-right: none;
-        padding: 1.5rem 0 2.5rem;
+        border-top: 1px solid var(--line);
+        justify-content: flex-start;
+        padding: 1.5rem 1rem;
+        min-height: auto;
+        margin: 0;
     }
 
     .auth-panel__tagline {
@@ -292,14 +318,45 @@ body {
     }
 }
 
-/* ─── Narrow (≤ 360px) — no horizontal scroll ──────────────────────────────── */
+/* ─── Mobile header adjustments (≤ 480px) ──────────────────────────────────── */
+@media (max-width: 480px) {
+    .site-header {
+        padding: 0.75rem 1rem;
+        flex-wrap: wrap;
+        row-gap: 0.5rem;
+        column-gap: 0.75rem;
+    }
+
+    .site-header__brand {
+        font-size: 1rem;
+    }
+
+    .site-header__nav {
+        gap: 0.75rem;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .site-header__link {
+        min-height: 44px;
+    }
+
+    .site-header__logout {
+        min-height: 44px;
+    }
+}
+
+/* ─── Narrow viewports (≤ 400px down to 320px) ─────────────────────────────── */
 @media (max-width: 400px) {
     .auth-page {
-        padding: 0 0.75rem;
+        padding: 0;
+        min-height: auto;
     }
+
     .auth-panel--form,
     .auth-panel--info {
-        padding-left: 0;
-        padding-right: 0;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        min-height: auto;
     }
 }

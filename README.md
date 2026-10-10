@@ -72,3 +72,27 @@ Deadline: 12 October 2026, 9:00 AM (Asia/Kolkata).
 Before submission, supply team name, project name, lead/member names and roll numbers, repository URL, backend URL and Vercel URL. Verify deployed feature flows, collect actual screenshots, and confirm contribution history.
 
 Local macOS setup uses API port 5001 because AirPlay occupies port 5000. If needed, set PORT=5001 in backend/.env and VITE_API_URL=http://127.0.0.1:5001/api in frontend/.env. Set FRONTEND_URL to the exact browser origin (currently http://127.0.0.1:5173). These local files stay untracked.
+
+## Authentication UI
+
+Implemented in `feature/auth-ui` (issue #5). Frontend only; the backend auth endpoints (`POST /api/auth/register` and `POST /api/auth/login`) must be supplied by the backend feature branch before end-to-end flows work.
+
+### Routes
+
+| Path | Access | Description |
+| --- | --- | --- |
+| `/login` | Public | Sign-in form; redirects authenticated users home |
+| `/register` | Public | Registration form; redirects authenticated users home |
+| `/` | Authenticated | Home page; unauthenticated users redirected to `/login` |
+
+### Session storage
+
+The session is persisted to `localStorage` under the key `lms_session` as `{ token, user }`. On every page load the token's `exp` claim is decoded client-side; an expired token is discarded silently and the user is treated as logged out. Corrupted JSON is caught and discarded. Never put secrets in the frontend environment or `localStorage`.
+
+### 401 / expired-token flow
+
+When any API request that sent a `Bearer` token receives a 401 response, the session is cleared, the user is redirected to `/login` with `{ state: { expired: true } }`, and the login page displays "Your session has expired. Please sign in again." To test this manually, open DevTools → Application → Local Storage, change any character of the stored token, then visit a protected page.
+
+### Password rule
+
+Minimum 8 characters. This must match the backend bcrypt rule when the auth endpoints are implemented. Update the `MIN_PASSWORD` constant in `Login.jsx` and `Register.jsx` if the backend team decides on a different minimum.

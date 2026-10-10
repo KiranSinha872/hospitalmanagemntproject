@@ -4,22 +4,12 @@
 
 body {
     margin: 0;
-    font-family: system-ui, sans-serif;
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
     background: #f4f6f2;
     color: #20322c;
     line-height: 1.6;
 }
 
-header {
-    padding: 1rem max(1rem, calc((100vw - 960px) / 2));
-    background: #203e33;
-}
-
-header a {
-    color: white;
-    text-decoration: none;
-    font-weight: 700;
-}
 
 main {
     max-width: 960px;

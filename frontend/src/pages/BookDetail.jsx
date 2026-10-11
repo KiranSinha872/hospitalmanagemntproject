@@ -1,20 +1,33 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AvailabilityBadge from "../components/AvailabilityBadge.jsx";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import StatusMessage from "../components/StatusMessage.jsx";
-import { getBookById } from "../services/bookService.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { deleteBook, getBookById } from "../services/bookService.js";
 import { normalizeBook } from "../utils/books.js";
 
 const BookDetail = () => {
     const { id } = useParams();
+    const { user } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const isAdmin = user?.role === "Admin";
+
     const [book, setBook] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [error, setError] = useState(null);
     const [reloadKey, setReloadKey] = useState(0);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     const handleRetry = () => {
         setReloadKey((prev) => prev + 1);
+    };
+
+    const handleDelete = async () => {
+        await deleteBook(id);
+        navigate("/books", { state: { notice: "Book deleted" } });
     };
 
     useEffect(() => {
@@ -61,10 +74,16 @@ const BookDetail = () => {
             isMounted = false;
             controller.abort();
         };
-    }, [id, reloadKey]);
+    }, [id, reloadKey, location.key]);
 
     return (
         <section className="catalog-page" aria-labelledby="detail-heading">
+            {location.state?.notice && (
+                <div className="catalog-notice" role="status" aria-live="polite">
+                    {location.state.notice}
+                </div>
+            )}
+
             <nav className="catalog-breadcrumb" aria-label="Breadcrumb">
                 <Link to="/books" className="catalog-link">
                     &larr; Back to catalog
@@ -158,9 +177,33 @@ const BookDetail = () => {
                         <Link to="/books" className="catalog-btn catalog-btn--back">
                             Back to catalog
                         </Link>
+                        {isAdmin && (
+                            <div className="catalog-detail__admin-actions">
+                                <Link
+                                    to={`/admin/books/${encodeURIComponent(id)}/edit`}
+                                    className="catalog-btn catalog-btn--secondary"
+                                >
+                                    Edit
+                                </Link>
+                                <button
+                                    type="button"
+                                    className="catalog-btn catalog-btn--danger"
+                                    onClick={() => setIsDeleteDialogOpen(true)}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        )}
                     </footer>
                 </article>
             ) : null}
+
+            <ConfirmDialog
+                isOpen={isDeleteDialogOpen}
+                bookTitle={book?.title || ""}
+                onConfirm={handleDelete}
+                onCancel={() => setIsDeleteDialogOpen(false)}
+            />
         </section>
     );
 };

@@ -120,6 +120,16 @@ Implemented for issue #7. Provides the book list and book detail views with live
 
 ### Endpoints called
 
-- `GET /api/books`: Retrieves the catalog book list.
+- `GET /api/books`: Retrieves the catalog book list. Supports optional search and filter parameters `?q=` (searches title, author, ISBN, category) and `?category=` (filters by category).
 - `GET /api/books/:id`: Retrieves individual book record and copy counts by ID.
+
+### Catalog search and filtering (Issue #12)
+
+- Controlled search input with debounced querying (300 ms) and immediate submission on Enter.
+- Category filter dropdown populated dynamically from catalog data and stabilized during active queries.
+- URL search parameters (`q` and `category`) synchronized with React Router as the source of truth for bookmarking and navigation history.
+- Stale response protection via request sequencing and `AbortController`.
+- Query-specific empty states with a "Clear filters" action and error states with a "Retry" button.
+- Accessible live region announcing loading, search counts, and empty states.
+- Frontend test suite runnable via `npm test` (root runs backend tests, node tests, and frontend Vitest component tests) or `npm run test --workspace frontend`.
 

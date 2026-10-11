@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import BookCard from "../components/BookCard.jsx";
 import StatusMessage from "../components/StatusMessage.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { getBooks } from "../services/bookService.js";
 
 const Books = () => {
+    const { user } = useAuth();
+    const location = useLocation();
+    const isAdmin = user?.role === "Admin";
+
     const [books, setBooks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -39,13 +45,30 @@ const Books = () => {
             isMounted = false;
             controller.abort();
         };
-    }, [reloadKey]);
+    }, [reloadKey, location.key]);
 
     return (
         <section className="catalog-page" aria-labelledby="catalog-heading">
+            {location.state?.notice && (
+                <div className="catalog-notice" role="status" aria-live="polite">
+                    {location.state.notice}
+                </div>
+            )}
+
             <header className="catalog-page__header">
-                <h1 id="catalog-heading" className="catalog-page__title">Book Catalog</h1>
-                <p className="catalog-page__intro">Browse the collection and check live shelf availability.</p>
+                <div className="catalog-page__header-row">
+                    <div>
+                        <h1 id="catalog-heading" className="catalog-page__title">Book Catalog</h1>
+                        <p className="catalog-page__intro">Browse the collection and check live shelf availability.</p>
+                    </div>
+                    {isAdmin && (
+                        <div className="catalog-page__header-actions">
+                            <Link to="/admin/books/new" className="catalog-btn catalog-btn--primary">
+                                Add book
+                            </Link>
+                        </div>
+                    )}
+                </div>
             </header>
 
             {loading ? (

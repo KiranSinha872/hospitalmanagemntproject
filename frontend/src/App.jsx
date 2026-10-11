@@ -5,7 +5,10 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import Books from "./pages/Books.jsx";
+import BookDetail from "./pages/BookDetail.jsx";
 import "./styles/auth.css";
+import "./styles/catalog.css";
 
 const App = () => {
     return (
@@ -24,6 +27,9 @@ const App = () => {
                     />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    {/* Wrap in ProtectedRoute once issue #5 is merged. */}
+                    <Route path="/books" element={<Books />} />
+                    <Route path="/books/:id" element={<BookDetail />} />
                     <Route
                         path="*"
                         element={

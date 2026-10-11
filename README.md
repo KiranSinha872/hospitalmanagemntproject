@@ -96,3 +96,30 @@ When any API request that sent a `Bearer` token receives a 401 response, the ses
 ### Password rule
 
 Minimum 8 characters. This must match the backend bcrypt rule when the auth endpoints are implemented. Update the `MIN_PASSWORD` constant in `Login.jsx` and `Register.jsx` if the backend team decides on a different minimum.
+
+## Book catalog
+
+Implemented for issue #7. Provides the book list and book detail views with live inventory availability.
+
+### Routes
+
+| Path | Access | Description |
+| --- | --- | --- |
+| `/books` | Public (temporary) | Book catalog listing with live stock badges |
+| `/books/:id` | Public (temporary) | Book detail page with inventory breakdown and metadata |
+
+*Note: The routes are currently accessible directly without route guards, and will be wrapped in `ProtectedRoute` once issue #5 integration is finalized.*
+
+### States
+
+- **Loading:** Polite live region (`aria-live="polite"`) indicating ongoing data fetch.
+- **Error:** Alert banner (`role="alert"`) with a Retry button allowing users to recover from network or server errors without leaving a blank page.
+- **Empty:** Displays "No books in the catalog yet." when the collection has no records.
+- **Missing book / Invalid ID:** 404 or invalid ID errors display a dedicated "Book not found" view with a link back to the catalog.
+- **Active listing / details:** Responsive grid of book cards with textual availability badges and comprehensive metadata.
+
+### Endpoints called
+
+- `GET /api/books`: Retrieves the catalog book list.
+- `GET /api/books/:id`: Retrieves individual book record and copy counts by ID.
+

@@ -1,11 +1,44 @@
-import { Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext.jsx";
+import { useEffect, useRef } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import Navbar from "./components/Navbar.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
-import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import Books from "./pages/Books.jsx";
+import BookDetail from "./pages/BookDetail.jsx";
+import BookNew from "./pages/BookNew.jsx";
+import BookEdit from "./pages/BookEdit.jsx";
 import "./styles/auth.css";
+import "./styles/catalog.css";
+
+const AdminRoute = ({ children }) => {
+    const { isAuthenticated, user } = useAuth();
+    const location = useLocation();
+    const wasAuthRef = useRef(isAuthenticated);
+
+    useEffect(() => {
+        wasAuthRef.current = isAuthenticated;
+    }, [isAuthenticated]);
+
+    if (!isAuthenticated) {
+        if (wasAuthRef.current) {
+            return <Navigate to="/login" state={{ expired: true, from: location }} replace />;
+        }
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    if (user?.role !== "Admin") {
+        return (
+            <main className="no-access">
+                <h1>Access denied</h1>
+                <p>You do not have access to this page.</p>
+            </main>
+        );
+    }
+
+    return children;
+};
 
 const App = () => {
     return (
@@ -18,12 +51,44 @@ const App = () => {
                         path="/"
                         element={
                             <ProtectedRoute>
-                                <Home />
+                                <Navigate to="/books" replace />
                             </ProtectedRoute>
                         }
                     />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route
+                        path="/books"
+                        element={
+                            <ProtectedRoute>
+                                <Books />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/books/:id"
+                        element={
+                            <ProtectedRoute>
+                                <BookDetail />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/books/new"
+                        element={
+                            <AdminRoute>
+                                <BookNew />
+                            </AdminRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/books/:id/edit"
+                        element={
+                            <AdminRoute>
+                                <BookEdit />
+                            </AdminRoute>
+                        }
+                    />
                     <Route
                         path="*"
                         element={

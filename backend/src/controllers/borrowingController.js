@@ -128,8 +128,14 @@ const borrowingController = {
 
             return res.status(201).json({
                 data: {
-                    borrowing: borrowing.toSafeObject(),
-                    book: updatedBook.toSafeObject()
+                    borrowing:
+                        typeof borrowing.toSafeObject === "function"
+                            ? borrowing.toSafeObject()
+                            : borrowing,
+                    book:
+                        typeof updatedBook.toSafeObject === "function"
+                            ? updatedBook.toSafeObject()
+                            : updatedBook
                 }
             });
         } catch (err) {
@@ -156,6 +162,163 @@ const borrowingController = {
                     await session.endSession();
                 } catch {}
             }
+        }
+    },
+
+    returnBook: async (req, res, next) => {
+        let session = null;
+        let returnedUpdated = false;
+
+        try {
+            const { id } = req.params;
+
+            if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+                return res.status(400).json({
+                    error: { message: "Valid borrowing ID is required" }
+                });
+            }
+
+            const borrowing = await Borrowing.findById(id);
+            if (!borrowing) {
+                return res.status(404).json({
+                    error: { message: "Borrowing record not found" }
+                });
+            }
+
+            if (borrowing.status !== "issued") {
+                return res.status(409).json({
+                    error: { message: "Book has already been returned" }
+                });
+            }
+
+            const topology = mongoose.connection?.client?.topology?.description;
+            const supportsTransactions = Boolean(
+                topology && topology.type !== "Single" && topology.setName
+            );
+
+            if (supportsTransactions) {
+                session = await mongoose.startSession();
+                session.startTransaction();
+            }
+
+            const sessionOpt = session ? { session } : {};
+
+            const returnDate = new Date();
+            const updatedBorrowing = await Borrowing.findOneAndUpdate(
+                { _id: id, status: "issued" },
+                { $set: { status: "returned", returnDate } },
+                { returnDocument: "after", ...sessionOpt }
+            );
+
+            if (!updatedBorrowing) {
+                if (session) {
+                    await session.abortTransaction();
+                }
+                return res.status(409).json({
+                    error: { message: "Book has already been returned" }
+                });
+            }
+            returnedUpdated = true;
+
+            const updatedBook = await Book.findByIdAndUpdate(
+                borrowing.bookId,
+                { $inc: { availableCopies: 1 } },
+                { returnDocument: "after", ...sessionOpt }
+            );
+
+            if (!updatedBook) {
+                if (session) {
+                    await session.abortTransaction();
+                } else {
+                    await Borrowing.findByIdAndUpdate(id, {
+                        $set: { status: "issued", returnDate: null }
+                    });
+                }
+                return res.status(404).json({
+                    error: { message: "Book not found" }
+                });
+            }
+
+            if (session) {
+                await session.commitTransaction();
+            }
+
+            return res.status(200).json({
+                data: {
+                    borrowing:
+                        typeof updatedBorrowing.toSafeObject === "function"
+                            ? updatedBorrowing.toSafeObject()
+                            : updatedBorrowing,
+                    book:
+                        typeof updatedBook.toSafeObject === "function"
+                            ? updatedBook.toSafeObject()
+                            : updatedBook
+                }
+            });
+        } catch (err) {
+            if (session) {
+                try {
+                    await session.abortTransaction();
+                } catch {}
+            } else if (returnedUpdated) {
+                // Guaranteed atomic rollback: revert borrowing status back to issued if stock restoration failed
+                try {
+                    await Borrowing.findByIdAndUpdate(req.params.id, {
+                        $set: { status: "issued", returnDate: null }
+                    });
+                } catch {}
+            }
+            return next(err);
+        } finally {
+            if (session) {
+                try {
+                    await session.endSession();
+                } catch {}
+            }
+        }
+    },
+
+    getBorrowings: async (req, res, next) => {
+        try {
+            const query = {};
+
+            if (req.user.role === "Admin") {
+                if (req.query.userId) {
+                    query.userId = req.query.userId;
+                }
+            } else {
+                query.userId = req.user.id;
+            }
+
+            if (req.query.bookId) {
+                query.bookId = req.query.bookId;
+            }
+
+            if (req.query.status) {
+                query.status = req.query.status;
+            }
+
+            const borrowings = await Borrowing.find(query).sort({ createdAt: -1 });
+
+            const data = borrowings.map((b) =>
+                typeof b.toSafeObject === "function"
+                    ? b.toSafeObject()
+                    : {
+                          id: (b._id || b.id)?.toString(),
+                          bookId: b.bookId,
+                          userId: b.userId,
+                          issueDate: b.issueDate,
+                          dueDate: b.dueDate,
+                          returnDate: b.returnDate,
+                          status: b.status,
+                          createdAt: b.createdAt,
+                          updatedAt: b.updatedAt
+                      }
+            );
+
+            return res.status(200).json({ data });
+        } catch (err) {
+            return next(err);
         }
     }
 };

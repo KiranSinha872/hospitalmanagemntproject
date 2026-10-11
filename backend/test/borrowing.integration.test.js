@@ -243,4 +243,184 @@ test("MongoDB Transactional Borrowing Integration Suite", async (t) => {
         const bookAfter = await Book.findById(lastCopyBook._id);
         assert.equal(bookAfter.availableCopies, 0, "availableCopies must be 0 and never negative");
     });
+
+    await t.test("Return: Concurrent duplicate return requests allow only one winner and restore stock exactly once", async () => {
+        const retUser = await User.create({
+            name: "Return Borrower",
+            email: "retborrower@integration.test",
+            passwordHash: "hashed",
+            role: "User"
+        });
+
+        const retBook = await Book.create({
+            title: "Return Concurrency Book",
+            author: "Author R",
+            ISBN: "TEST-ISBN-RETCON-01",
+            category: "Concurrency",
+            totalCopies: 5,
+            availableCopies: 3
+        });
+
+        const loan = await Borrowing.create({
+            userId: retUser._id,
+            bookId: retBook._id,
+            dueDate: new Date(Date.now() + 86400000),
+            status: "issued",
+            issueDate: new Date()
+        });
+
+        const returnUrl = `${baseUrl}/${loan._id}/return`;
+
+        // Two concurrent return requests for the exact same active loan
+        const [res1, res2] = await Promise.all([
+            fetch(returnUrl, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${adminToken}` }
+            }),
+            fetch(returnUrl, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${adminToken}` }
+            })
+        ]);
+
+        const statuses = [res1.status, res2.status].sort();
+        assert.deepEqual(statuses, [200, 409], "Exactly one return request must succeed (200) and one must conflict (409)");
+
+        // Stock restored from 3 to 4 (exactly once)
+        const bookAfter = await Book.findById(retBook._id);
+        assert.equal(bookAfter.availableCopies, 4, "availableCopies must increment exactly once to 4");
+
+        // Loan record updated to returned
+        const loanAfter = await Borrowing.findById(loan._id);
+        assert.equal(loanAfter.status, "returned");
+        assert.ok(loanAfter.returnDate instanceof Date);
+    });
+
+    await t.test("Return Rollback: Simulated stock update failure rolls back borrowing return status", async () => {
+        const retUser = await User.create({
+            name: "Return Rollback User",
+            email: "retrollback@integration.test",
+            passwordHash: "hashed",
+            role: "User"
+        });
+
+        const retBook = await Book.create({
+            title: "Return Rollback Book",
+            author: "Author RR",
+            ISBN: "TEST-ISBN-RETROLL-01",
+            category: "Rollback",
+            totalCopies: 5,
+            availableCopies: 2
+        });
+
+        const loan = await Borrowing.create({
+            userId: retUser._id,
+            bookId: retBook._id,
+            dueDate: new Date(Date.now() + 86400000),
+            status: "issued",
+            issueDate: new Date()
+        });
+
+        const originalBookFindByIdAndUpdate = Book.findByIdAndUpdate;
+        Book.findByIdAndUpdate = async () => {
+            throw new Error("Simulated database failure during stock increment");
+        };
+
+        try {
+            const returnUrl = `${baseUrl}/${loan._id}/return`;
+            const res = await fetch(returnUrl, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${adminToken}` }
+            });
+
+            assert.equal(res.status, 500);
+
+            // Verify borrowing record status was rolled back to issued
+            const loanAfter = await Borrowing.findById(loan._id);
+            assert.equal(loanAfter.status, "issued");
+            assert.equal(loanAfter.returnDate, null);
+
+            // Verify stock remained unchanged
+            const bookAfter = await Book.findById(retBook._id);
+            assert.equal(bookAfter.availableCopies, 2);
+        } finally {
+            Book.findByIdAndUpdate = originalBookFindByIdAndUpdate;
+        }
+    });
+
+    await t.test("GET /api/borrowings: Role and ownership isolation on live database", async () => {
+        const userA = await User.create({
+            name: "User Isolation A",
+            email: "user_iso_a@integration.test",
+            passwordHash: "hashed",
+            role: "User"
+        });
+
+        const userB = await User.create({
+            name: "User Isolation B",
+            email: "user_iso_b@integration.test",
+            passwordHash: "hashed",
+            role: "User"
+        });
+
+        const isoBook = await Book.create({
+            title: "Isolation Book",
+            author: "Author I",
+            ISBN: "TEST-ISBN-ISO-01",
+            category: "Isolation",
+            totalCopies: 5,
+            availableCopies: 3
+        });
+
+        await Borrowing.create([
+            {
+                userId: userA._id,
+                bookId: isoBook._id,
+                dueDate: new Date(Date.now() + 86400000),
+                status: "issued",
+                issueDate: new Date()
+            },
+            {
+                userId: userB._id,
+                bookId: isoBook._id,
+                dueDate: new Date(Date.now() + 86400000),
+                status: "returned",
+                issueDate: new Date(),
+                returnDate: new Date()
+            }
+        ]);
+
+        const userAToken = jwt.sign(
+            { id: userA._id.toString(), email: userA.email, role: "User" },
+            env.JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        // 1. Admin sees records for both users
+        const resAdmin = await fetch(baseUrl, {
+            headers: { Authorization: `Bearer ${adminToken}` }
+        });
+        assert.equal(resAdmin.status, 200);
+        const bodyAdmin = await resAdmin.json();
+        const foundA = bodyAdmin.data.some((b) => b.userId === userA._id.toString());
+        const foundB = bodyAdmin.data.some((b) => b.userId === userB._id.toString());
+        assert.ok(foundA && foundB, "Admin must be able to view borrowing records for all users");
+
+        // 2. User A only sees their own records
+        const resUserA = await fetch(baseUrl, {
+            headers: { Authorization: `Bearer ${userAToken}` }
+        });
+        assert.equal(resUserA.status, 200);
+        const bodyUserA = await resUserA.json();
+        assert.ok(bodyUserA.data.length >= 1);
+        assert.ok(bodyUserA.data.every((b) => b.userId === userA._id.toString()));
+
+        // 3. User A attempts to spoof ?userId=userB._id -> still only sees User A records
+        const resSpoof = await fetch(`${baseUrl}?userId=${userB._id.toString()}`, {
+            headers: { Authorization: `Bearer ${userAToken}` }
+        });
+        assert.equal(resSpoof.status, 200);
+        const bodySpoof = await resSpoof.json();
+        assert.ok(bodySpoof.data.every((b) => b.userId === userA._id.toString()));
+    });
 });

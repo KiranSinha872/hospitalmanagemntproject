@@ -359,6 +359,222 @@
     margin-top: 2rem;
     padding-top: 1.25rem;
     border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.catalog-detail__admin-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Header actions & notice banner */
+.catalog-page__header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.catalog-page__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 0.25rem;
+}
+
+.catalog-notice {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    background-color: #E8EFEA;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    color: var(--accent-hover);
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Button variants */
+.catalog-btn--primary {
+    background-color: var(--accent);
+    color: #FFFDF8;
+    border-color: var(--accent);
+}
+
+.catalog-btn--primary:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.catalog-btn--secondary {
+    background-color: #FFFDF8;
+    color: var(--ink);
+    border-color: var(--line);
+}
+
+.catalog-btn--secondary:hover {
+    background-color: #ECE5D8;
+    border-color: var(--muted);
+}
+
+.catalog-btn--danger {
+    background-color: var(--error);
+    color: #FFFDF8;
+    border-color: var(--error);
+}
+
+.catalog-btn--danger:hover {
+    background-color: #72241A;
+    border-color: #72241A;
+}
+
+.catalog-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Book form */
+.book-form {
+    max-width: 600px;
+    width: 100%;
+    margin-top: 1.5rem;
+}
+
+.book-form__alert {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid var(--error);
+    background-color: #F8EBEA;
+    color: var(--error);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+}
+
+.book-form__field {
+    margin-bottom: 1.25rem;
+}
+
+.book-form__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.book-form__label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.35rem;
+    color: var(--ink);
+}
+
+.book-form__required {
+    color: var(--error);
+}
+
+.book-form__hint {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.35rem;
+}
+
+.book-form__input,
+.book-form__textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.6rem 0.75rem;
+    font-size: 1rem;
+    font-family: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background-color: #FFFDF8;
+    color: var(--ink);
+    box-sizing: border-box;
+}
+
+.book-form__textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.book-form__input:focus,
+.book-form__textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-color: var(--accent);
+}
+
+.book-form__input--invalid,
+.book-form__textarea--invalid {
+    border-color: var(--error);
+}
+
+.book-form__field-error {
+    color: var(--error);
+    font-size: 0.85rem;
+    margin: 0.35rem 0 0 0;
+}
+
+.book-form__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+/* Native dialog styling */
+.catalog-dialog {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background-color: var(--card);
+    color: var(--ink);
+    padding: 1.5rem;
+    max-width: 480px;
+    width: calc(100% - 2rem);
+    box-sizing: border-box;
+}
+
+.catalog-dialog::backdrop {
+    background-color: rgba(30, 27, 22, 0.5);
+}
+
+.catalog-dialog__title {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 1.4rem;
+    margin: 0 0 0.75rem 0;
+    color: var(--ink);
+}
+
+.catalog-dialog__body {
+    color: var(--muted);
+    margin: 0 0 1.25rem 0;
+    line-height: 1.5;
+    font-size: 0.95rem;
+}
+
+.catalog-dialog__alert {
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid var(--error);
+    background-color: #F8EBEA;
+    color: var(--error);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+}
+
+.catalog-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
 }
 
 /* Responsive adjustments */
@@ -380,6 +596,10 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
+    }
+
+    .book-form__row {
+        grid-template-columns: 1fr;
     }
 }
 

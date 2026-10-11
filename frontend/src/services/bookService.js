@@ -1,6 +1,17 @@
 import { request } from "./api.js";
 import { buildSearchQueryString } from "../utils/search.js";
 
+const getStoredToken = () => {
+    try {
+        const raw = localStorage.getItem("lms_session");
+        if (!raw) return undefined;
+        const parsed = JSON.parse(raw);
+        return parsed?.token || undefined;
+    } catch {
+        return undefined;
+    }
+};
+
 /**
  * Fetch list of books from the catalog with optional search and category filters.
  * @param {{ q?: string, category?: string, signal?: AbortSignal, token?: string }} [options]
@@ -9,6 +20,8 @@ import { buildSearchQueryString } from "../utils/search.js";
 const getBooks = async ({ q, category, signal, token } = {}) => {
     const qs = buildSearchQueryString({ q, category });
     const res = await request(`/books${qs}`, { signal, token });
+const getBooks = async ({ signal, ...options } = {}) => {
+    const res = await request("/books", { signal, ...options });
     return res?.data ?? res;
 };
 
@@ -18,9 +31,60 @@ const getBooks = async ({ q, category, signal, token } = {}) => {
  * @param {{ signal?: AbortSignal }} [options]
  * @returns {Promise<any>}
  */
-const getBookById = async (id, { signal } = {}) => {
-    const res = await request(`/books/${encodeURIComponent(id)}`, { signal });
+const getBookById = async (id, { signal, ...options } = {}) => {
+    const res = await request(`/books/${encodeURIComponent(id)}`, { signal, ...options });
     return res?.data ?? res;
 };
 
-export { getBooks, getBookById };
+/**
+ * Create a new book.
+ * @param {object} data
+ * @param {{ token?: string, signal?: AbortSignal }} [options]
+ * @returns {Promise<any>}
+ */
+const createBook = async (data, options = {}) => {
+    const token = options.token || getStoredToken();
+    const res = await request("/books", {
+        method: "POST",
+        body: JSON.stringify(data),
+        ...options,
+        ...(token ? { token } : {}),
+    });
+    return res?.data ?? res;
+};
+
+/**
+ * Update an existing book by ID.
+ * @param {string} id
+ * @param {object} data
+ * @param {{ token?: string, signal?: AbortSignal }} [options]
+ * @returns {Promise<any>}
+ */
+const updateBook = async (id, data, options = {}) => {
+    const token = options.token || getStoredToken();
+    const res = await request(`/books/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+        ...options,
+        ...(token ? { token } : {}),
+    });
+    return res?.data ?? res;
+};
+
+/**
+ * Delete a book by ID.
+ * @param {string} id
+ * @param {{ token?: string, signal?: AbortSignal }} [options]
+ * @returns {Promise<any>}
+ */
+const deleteBook = async (id, options = {}) => {
+    const token = options.token || getStoredToken();
+    const res = await request(`/books/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        ...options,
+        ...(token ? { token } : {}),
+    });
+    return res?.data ?? res;
+};
+
+export { getBooks, getBookById, createBook, updateBook, deleteBook };

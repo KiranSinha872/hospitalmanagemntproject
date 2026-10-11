@@ -132,4 +132,34 @@ Implemented for issue #7. Provides the book list and book detail views with live
 - Query-specific empty states with a "Clear filters" action and error states with a "Retry" button.
 - Accessible live region announcing loading, search counts, and empty states.
 - Frontend test suite runnable via `npm test` (root runs backend tests, node tests, and frontend Vitest component tests) or `npm run test --workspace frontend`.
+## Book management
+
+Implemented for issue #11. Provides librarian forms for adding, updating, and deleting books with validation and conflict handling.
+
+### Routes
+
+| Path | Access | Description |
+| --- | --- | --- |
+| `/admin/books/new` | Admin only | Form to create a new book with client validation |
+| `/admin/books/:id/edit` | Admin only | Form to edit metadata and total copies of an existing book |
+
+### Role rule
+
+Book management routes and controls require the `Admin` role (`user.role === "Admin"`). Non-admin signed-in users attempting to access `/admin/books/*` directly encounter the existing access-denied screen via `ProtectedRoute`, while unauthenticated visitors are redirected to `/login`. Admin controls ("Add book" on the catalog page, "Edit" and "Delete" on the book detail page) are rendered only for users with the `Admin` role as a UX convenience (all mutations are enforced by backend role checks).
+
+### Error cases
+
+- **400 (Validation errors):** Field-level errors displayed directly beneath corresponding inputs.
+- **409 (Duplicate ISBN):** Conflicts on book creation or edit are highlighted on the ISBN input field.
+- **409 (Active loan deletion conflict):** Deletion rejected due to active borrowings displays "This book has active loans and cannot be deleted. Return all copies first." within the confirmation dialog.
+- **403 (Forbidden):** Permission denied errors display "You do not have permission to do this."
+- **404 (Not found):** Missing records display "This book no longer exists." or a dedicated not-found view with catalog return link.
+- **Network / 5xx:** Connection failures and server errors show safe messages without stack traces.
+- **401 (Unauthorized):** Credentialed requests receiving 401 trigger the session expiration flow.
+
+### Endpoints called
+
+- `POST /api/books`: Create a new book record.
+- `PUT /api/books/:id`: Update book metadata and total copies.
+- `DELETE /api/books/:id`: Remove a book from the catalog if no active loans exist.
 

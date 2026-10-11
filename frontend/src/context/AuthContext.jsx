@@ -2,40 +2,26 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useNavigate } from "react-router-dom";
 import { registerOn401 } from "../services/api.js";
 import { login as apiLogin, register as apiRegister } from "../services/authService.js";
+import { parseStoredSession } from "../utils/jwt.js";
 
 const STORAGE_KEY = "lms_session";
 
 const AuthContext = createContext(null);
 
-/**
- * Decode a JWT payload without verification (exp check only).
- * Returns null on any parse failure.
- */
-const decodeJwtPayload = (token) => {
-    try {
-        const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-        return JSON.parse(atob(base64));
-    } catch {
-        return null;
-    }
-};
-
-const isTokenExpired = (token) => {
-    const payload = decodeJwtPayload(token);
-    if (!payload || typeof payload.exp !== "number") return false;
-    // exp is in seconds
-    return Date.now() / 1000 > payload.exp;
-};
-
 const loadSession = () => {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return null;
-        const session = JSON.parse(raw);
-        if (!session?.token || !session?.user) return null;
-        if (isTokenExpired(session.token)) return null;
+        const session = parseStoredSession(raw);
+        if (!session) {
+            localStorage.removeItem(STORAGE_KEY);
+            return null;
+        }
         return session;
     } catch {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch {}
         return null;
     }
 };

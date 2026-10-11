@@ -1,45 +1,78 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import BookCard from "../components/BookCard.jsx";
+import SearchFilter from "../components/SearchFilter.jsx";
 import StatusMessage from "../components/StatusMessage.jsx";
-import { getBooks } from "../services/bookService.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import useBookSearch from "../hooks/useBookSearch.js";
 
 const Books = () => {
-    const [books, setBooks] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const queryParam = (searchParams.get("q") || "").trim();
+    const categoryParam = (searchParams.get("category") || "").trim();
+
+    const { token } = useAuth() || {};
     const [reloadKey, setReloadKey] = useState(0);
+
+    const handleParamsChange = useCallback(({ q, category }) => {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            if (q) {
+                next.set("q", q);
+            } else {
+                next.delete("q");
+            }
+            if (category) {
+                next.set("category", category);
+            } else {
+                next.delete("category");
+            }
+            return next;
+        }, { replace: true });
+    }, [setSearchParams]);
+
+    const {
+        searchInput,
+        activeQuery,
+        selectedCategory,
+        books,
+        loading,
+        error,
+        availableCategories,
+        handleSearchChange,
+        handleImmediateSearch,
+        handleCategoryChange,
+        handleClearSearch,
+        handleClearAll,
+    } = useBookSearch({
+        queryParam,
+        categoryParam,
+        token,
+        reloadKey,
+        onParamsChange: handleParamsChange,
+    });
 
     const handleRetry = () => {
         setReloadKey((prev) => prev + 1);
     };
 
-    useEffect(() => {
-        let isMounted = true;
-        const controller = new AbortController();
+    // Construct specific copy for states
+    const hasFilters = Boolean(activeQuery || selectedCategory);
+    const emptyMessage = activeQuery && selectedCategory
+        ? `No results for '${activeQuery}' in ${selectedCategory}.`
+        : activeQuery
+        ? `No results for '${activeQuery}'.`
+        : selectedCategory
+        ? `No results in ${selectedCategory}.`
+        : "No books in the catalog yet.";
 
-        const fetchBooks = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const result = await getBooks({ signal: controller.signal });
-                if (!isMounted) return;
-                const items = Array.isArray(result) ? result : (Array.isArray(result?.data) ? result.data : []);
-                setBooks(items);
-                setLoading(false);
-            } catch (err) {
-                if (!isMounted || controller.signal.aborted) return;
-                setError(err);
-                setLoading(false);
-            }
-        };
+    const errorMessage = activeQuery
+        ? `Couldn't load results for '${activeQuery}'.`
+        : (error?.message || "Unable to load books. Please check your connection and try again.");
 
-        fetchBooks();
-
-        return () => {
-            isMounted = false;
-            controller.abort();
-        };
-    }, [reloadKey]);
+    const loadingMessage = activeQuery
+        ? `Loading results for '${activeQuery}'`
+        : "Loading catalog…";
 
     return (
         <section className="catalog-page" aria-labelledby="catalog-heading">
@@ -48,18 +81,40 @@ const Books = () => {
                 <p className="catalog-page__intro">Browse the collection and check live shelf availability.</p>
             </header>
 
-            {loading ? (
-                <StatusMessage type="loading" message="Loading catalog…" />
-            ) : error ? (
+            <SearchFilter
+                searchInput={searchInput}
+                activeQuery={activeQuery}
+                selectedCategory={selectedCategory}
+                categories={availableCategories}
+                totalResults={books.length}
+                loading={loading}
+                error={error}
+                onSearchChange={handleSearchChange}
+                onSearchSubmit={handleImmediateSearch}
+                onCategoryChange={handleCategoryChange}
+                onClearSearch={handleClearSearch}
+            />
+
+            {error ? (
                 <StatusMessage
                     type="error"
-                    message={error.message || "Unable to load books. Please check your connection and try again."}
+                    message={errorMessage}
                     onRetry={handleRetry}
                 />
+            ) : loading && books.length === 0 ? (
+                <StatusMessage type="loading" message={loadingMessage} />
             ) : books.length === 0 ? (
-                <StatusMessage type="empty" message="No books in the catalog yet." />
+                <StatusMessage
+                    type="empty"
+                    message={emptyMessage}
+                    onClear={hasFilters ? handleClearAll : undefined}
+                />
             ) : (
-                <div className="catalog-grid" role="list" aria-label="Books list">
+                <div
+                    className={`catalog-grid ${loading ? "catalog-grid--dimmed" : ""}`}
+                    role="list"
+                    aria-label="Books list"
+                >
                     {books.map((book) => {
                         const key = book._id || book.id || `${book.title}-${book.ISBN}`;
                         return (

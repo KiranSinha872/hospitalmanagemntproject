@@ -11,9 +11,9 @@ const Navbar = () => {
             </Link>
 
             <nav className="site-header__nav" aria-label="Site navigation">
-                <Link to="/books" className="site-header__link">Catalog</Link>
                 {isAuthenticated ? (
                     <>
+                        <Link to="/books" className="site-header__link">Catalog</Link>
                         <span className="site-header__user" aria-label={`Signed in as ${user?.name}`}>
                             {user?.name}
                         </span>
